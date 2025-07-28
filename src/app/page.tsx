@@ -14,9 +14,11 @@ import {
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 export default function AgriTrackLogin() {
   const { toast } = useToast();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -55,12 +57,16 @@ export default function AgriTrackLogin() {
         title: 'Login successful!',
         description: 'You are now logged in.',
       });
+      router.push('/dashboard');
     }
   };
 
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`
+      }
     });
     if (error) {
       toast({
@@ -98,9 +104,9 @@ export default function AgriTrackLogin() {
   };
 
   return (
-    <div className="relative mx-auto flex size-full min-h-screen max-w-sm flex-col justify-between bg-white font-body">
+    <div className="relative mx-auto flex size-full min-h-screen max-w-sm flex-col justify-between bg-card font-body">
       <div className="flex flex-col">
-        <header className="flex items-center bg-white p-4 pb-2">
+        <header className="flex items-center bg-card p-4 pb-2">
           <div className="w-12"></div>
           <h2 className="flex-1 text-center text-lg font-bold tracking-tight text-foreground">
             EBAT
@@ -116,7 +122,7 @@ export default function AgriTrackLogin() {
           <h1 className="pt-5 pb-3 text-center text-[22px] font-bold tracking-tight text-foreground">
             Welcome to Agrotron
           </h1>
-          <p className="pb-3 pt-1 text-center text-base font-normal leading-normal text-foreground">
+          <p className="pb-3 pt-1 text-center text-base font-normal leading-normal text-muted-foreground">
             Monitor your crops, assess damage, and access research.
           </p>
 
@@ -173,9 +179,9 @@ export default function AgriTrackLogin() {
         </main>
       </div>
 
-      <footer className="sticky bottom-0 bg-white">
+      <footer className="sticky bottom-0 bg-card">
         <div className="flex gap-2 border-t border-border px-4 pt-2 pb-3">
-          <Link href="#" className="flex flex-1 flex-col items-center justify-end gap-1 text-foreground">
+          <Link href="#" className="flex flex-1 flex-col items-center justify-end gap-1 text-primary">
             <div className="flex h-8 items-center justify-center">
               <HouseIcon className="h-6 w-6" />
             </div>
@@ -196,7 +202,7 @@ export default function AgriTrackLogin() {
             </div>
           </Link>
         </div>
-        <div className="h-5 bg-white"></div>
+        <div className="h-5 bg-card"></div>
       </footer>
     </div>
   );
