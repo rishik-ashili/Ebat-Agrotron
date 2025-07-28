@@ -275,10 +275,11 @@ export default function Dashboard() {
             Scan for Disease
           </Button>
           <Button
+            asChild
             variant="secondary"
             className="min-w-[84px] flex-1 text-sm font-bold"
           >
-            View Health Map
+            <Link href="/health-map">View Health Map</Link>
           </Button>
         </div>
         <div className="px-4 py-3">
@@ -402,3 +403,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
