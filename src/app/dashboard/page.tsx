@@ -74,6 +74,19 @@ const defaultNotifications: Omit<Notification, 'id' | 'status'>[] = [
   },
 ];
 
+const getWeatherConditionFromCode = (code: number): string => {
+    if (code === 0) return 'Clear sky';
+    if (code >= 1 && code <= 3) return 'Mainly Clear';
+    if (code === 45 || code === 48) return 'Fog';
+    if (code >= 51 && code <= 55) return 'Drizzle';
+    if (code >= 61 && code <= 67) return 'Rain';
+    if (code >= 71 && code <= 77) return 'Snow';
+    if (code === 80 || code === 81 || code === 82) return 'Rain Showers';
+    if (code === 85 || code === 86) return 'Snow Showers';
+    if (code >= 95 && code <= 99) return 'Thunderstorm';
+    return 'Cloudy';
+};
+
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
@@ -86,39 +99,23 @@ export default function Dashboard() {
   const { toast } = useToast();
 
   const fetchWeatherData = useCallback(async (latitude: number, longitude: number) => {
-    // IMPORTANT: You need to get an API key from a weather service like OpenWeatherMap.
-    // Once you have the key, create a .env.local file in your project root and add:
-    // NEXT_PUBLIC_WEATHER_API_KEY=your_api_key
-    // Then, uncomment the code below to fetch real weather data.
-
-    /*
-    const API_KEY = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
-    if (!API_KEY) {
-      console.error("Weather API key is missing.");
-      setWeather({ temp: 24, condition: 'Sunny' }); // Fallback
-      return;
-    }
     try {
-      const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric`);
+      const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code`);
       const data = await response.json();
       if (response.ok) {
         setWeather({
-          temp: Math.round(data.main.temp),
-          condition: data.weather[0].main,
+          temp: Math.round(data.current.temperature_2m),
+          condition: getWeatherConditionFromCode(data.current.weather_code),
         });
       } else {
-        throw new Error(data.message);
+        throw new Error(data.reason || 'Failed to fetch weather data');
       }
     } catch (error) {
       console.error("Failed to fetch weather:", error);
       toast({ variant: 'destructive', title: 'Could not fetch weather', description: (error as Error).message });
       setWeather({ temp: 24, condition: 'Sunny' }); // Fallback
     }
-    */
-    
-    // Placeholder data until you add an API key.
-    setWeather({ temp: 24, condition: 'Sunny' });
-  }, []);
+  }, [toast]);
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -173,13 +170,13 @@ export default function Dashboard() {
         },
         (error) => {
           console.error("Geolocation error:", error);
-          toast({ variant: 'destructive', title: 'Location Error', description: 'Could not get your location.' });
+          toast({ variant: 'destructive', title: 'Location Error', description: 'Could not get your location. Using default weather.' });
           // Fallback to default weather if location is denied
           setWeather({ temp: 24, condition: 'Sunny' });
         }
       );
     } else {
-      toast({ variant: 'destructive', title: 'Location Error', description: 'Geolocation is not supported by this browser.' });
+      toast({ variant: 'destructive', title: 'Location Error', description: 'Geolocation is not supported. Using default weather.' });
       setWeather({ temp: 24, condition: 'Sunny' });
     }
 
@@ -264,11 +261,13 @@ export default function Dashboard() {
 
         </header>
         <p className="px-4 pb-3 pt-1 text-sm font-normal leading-normal text-muted-foreground flex items-center">
-            {weather.condition && (
+            {weather.condition ? (
                 <>
                     <CloudSun className="mr-2 h-4 w-4" />
                     {weather.condition}, {weather.temp !== null ? `${weather.temp}°C` : '...'}
                 </>
+            ) : (
+              'Loading weather...'
             )}
         </p>
 
@@ -467,3 +466,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
