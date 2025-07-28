@@ -28,8 +28,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { CheckCircle, Trash2 } from 'lucide-react';
+import { CheckCircle, Trash2, Bell, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type Task = {
   id: number;
@@ -38,38 +39,93 @@ type Task = {
   is_done: boolean;
 };
 
+type Notification = {
+  id: number;
+  type: string;
+  title: string;
+  description: string;
+  image_url: string;
+  status: 'active' | 'snoozed' | 'cleared';
+};
+
+const defaultNotifications: Omit<Notification, 'id' | 'status'>[] = [
+  {
+    type: 'urgent',
+    title: 'High Pest Alert in Field B',
+    description: 'Take action to prevent crop damage.',
+    image_url: 'https://placehold.co/100x75.png',
+  },
+  {
+    type: 'health',
+    title: 'Overall Farm Health: 85% (Good)',
+    description: 'Keep up the great work!',
+    image_url: 'https://placehold.co/100x75.png',
+  },
+   {
+    type: 'info',
+    title: 'New Irrigation Schedule Available',
+    description: 'Check the updated schedule for Field A.',
+    image_url: 'https://placehold.co/100x75.png',
+  },
+];
+
+
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
-  const fetchUserAndTasks = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       router.push('/');
-    } else {
-      setUser(user);
-      const { data: tasksData, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('is_done', { ascending: true })
-        .order('created_at', { ascending: false });
+      return;
+    }
+    setUser(user);
 
-      if (error) {
-        toast({ variant: 'destructive', title: 'Error fetching tasks', description: error.message });
+    // Fetch Tasks
+    const { data: tasksData, error: tasksError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('is_done', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (tasksError) {
+      toast({ variant: 'destructive', title: 'Error fetching tasks', description: tasksError.message });
+    } else {
+      setTasks(tasksData);
+    }
+
+    // Fetch Notifications
+    const { data: notificationsData, error: notificationsError } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .neq('status', 'cleared') // Fetch active and snoozed
+      .order('created_at', { ascending: false });
+
+    if (notificationsError) {
+      toast({ variant: 'destructive', title: 'Error fetching notifications', description: notificationsError.message });
+    } else {
+       if (notificationsData.length === 0) {
+        // No notifications in DB, show default ones
+        const placeholderNotifications = defaultNotifications.map((n, i) => ({ ...n, id: -(i + 1), status: 'active' as const }));
+        setNotifications(placeholderNotifications);
       } else {
-        setTasks(tasksData);
+        setNotifications(notificationsData);
       }
     }
   }, [router, toast]);
 
-
   useEffect(() => {
-    fetchUserAndTasks();
-  }, [fetchUserAndTasks]);
+    fetchData();
+  }, [fetchData]);
+
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -92,7 +148,7 @@ export default function Dashboard() {
     if (error) {
       toast({ variant: 'destructive', title: 'Error updating task', description: error.message });
     } else {
-      fetchUserAndTasks(); // Refresh tasks
+      fetchData(); // Refresh all data
       toast({ title: `Task marked as ${isDone ? 'done' : 'pending'}` });
     }
   };
@@ -102,10 +158,26 @@ export default function Dashboard() {
     if (error) {
       toast({ variant: 'destructive', title: 'Error deleting task', description: error.message });
     } else {
-      fetchUserAndTasks(); // Refresh tasks
+      fetchData(); // Refresh all data
       toast({ title: 'Task deleted successfully' });
     }
   };
+
+  const handleUpdateNotification = async (notificationId: number, status: 'snoozed' | 'cleared') => {
+    if (notificationId < 0) { // It's a placeholder
+       setNotifications(notifications.filter(n => n.id !== notificationId));
+       toast({ title: `Notification ${status}` });
+       return;
+    }
+    const { error } = await supabase.from('notifications').update({ status }).eq('id', notificationId);
+     if (error) {
+      toast({ variant: 'destructive', title: 'Error updating notification', description: error.message });
+    } else {
+      fetchData(); // Refresh all data
+      toast({ title: `Notification ${status}` });
+    }
+  };
+
 
   return (
     <div className="relative mx-auto flex size-full min-h-screen max-w-sm flex-col justify-between bg-background font-body text-foreground">
@@ -136,50 +208,66 @@ export default function Dashboard() {
           Sunny, 24°C
         </p>
 
-        <main className="space-y-4 px-4">
-          <div className="flex items-stretch justify-between gap-4 rounded-lg bg-card p-4 shadow-[0_0_4px_rgba(0,0,0,0.1)]">
-            <div className="flex flex-[2_2_0px] flex-col gap-1">
-              <p className="text-sm font-normal leading-normal text-muted-foreground">
-                Urgent
-              </p>
-              <p className="text-base font-bold leading-tight text-foreground">
-                High Pest Alert in Field B
-              </p>
-              <p className="text-sm font-normal leading-normal text-muted-foreground">
-                Take action to prevent crop damage.
-              </p>
+        <main className="px-4">
+          <ScrollArea className="h-48 w-full">
+            <div className="space-y-4 pr-4">
+            {notifications.filter(n => n.status === 'active').map((notification) => (
+              <AlertDialog key={notification.id} onOpenChange={(open) => !open && setSelectedNotification(null)}>
+                <AlertDialogTrigger asChild onClick={() => setSelectedNotification(notification)}>
+                   <div className="flex cursor-pointer items-stretch justify-between gap-4 rounded-lg bg-card p-4 shadow-[0_0_4px_rgba(0,0,0,0.1)]">
+                    <div className="flex flex-[2_2_0px] flex-col gap-1">
+                      <p className={cn("text-sm font-normal leading-normal", notification.type === 'urgent' ? 'text-destructive' : 'text-muted-foreground')}>
+                        {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}
+                      </p>
+                      <p className="text-base font-bold leading-tight text-foreground">
+                        {notification.title}
+                      </p>
+                      <p className="text-sm font-normal leading-normal text-muted-foreground">
+                        {notification.description}
+                      </p>
+                    </div>
+                    <div className="relative flex-1">
+                      <Image
+                        src={notification.image_url}
+                        alt={notification.title}
+                        data-ai-hint="farm notification"
+                        width={100}
+                        height={75}
+                        className="aspect-video w-full rounded-lg bg-cover bg-center bg-no-repeat object-cover"
+                      />
+                    </div>
+                  </div>
+                </AlertDialogTrigger>
+                 <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{selectedNotification?.title}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                       What would you like to do with this notification?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="grid grid-cols-1 sm:flex-col sm:space-y-2">
+                     <AlertDialogAction
+                      onClick={() => handleUpdateNotification(selectedNotification!.id, 'snoozed')}
+                      className="flex items-center gap-2"
+                    >
+                      <Bell className="h-4 w-4" />
+                      <span>Snooze</span>
+                    </AlertDialogAction>
+                    <AlertDialogAction
+                      variant="secondary"
+                      onClick={() => handleUpdateNotification(selectedNotification!.id, 'cleared')}
+                      className="flex items-center gap-2"
+                    >
+                       <X className="h-4 w-4" />
+                      <span>Clear</span>
+                    </AlertDialogAction>
+                     <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ))}
             </div>
-            <div className="relative flex-1">
-              <Image
-                src="https://placehold.co/100x75.png"
-                alt="pest alert"
-                data-ai-hint="field pests"
-                width={100}
-                height={75}
-                className="aspect-video w-full rounded-lg bg-cover bg-center bg-no-repeat object-cover"
-              />
-            </div>
-          </div>
-          <div className="flex items-stretch justify-between gap-4 rounded-lg bg-card p-4 shadow-[0_0_4px_rgba(0,0,0,0.1)]">
-            <div className="flex flex-[2_2_0px] flex-col gap-1">
-              <p className="text-base font-bold leading-tight text-foreground">
-                Overall Farm Health: 85% (Good)
-              </p>
-              <p className="text-sm font-normal leading-normal text-muted-foreground">
-                Keep up the great work!
-              </p>
-            </div>
-            <div className="relative flex-1">
-              <Image
-                src="https://placehold.co/100x75.png"
-                data-ai-hint="healthy vegetables"
-                alt="farm health"
-                width={100}
-                height={75}
-                className="aspect-video w-full rounded-lg bg-cover bg-center bg-no-repeat object-cover"
-              />
-            </div>
-          </div>
+           </ScrollArea>
         </main>
 
         <div className="flex flex-wrap justify-between gap-3 px-4 py-3">
