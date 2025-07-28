@@ -19,7 +19,7 @@ function Terrain() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[100, 100, 64, 64]} />
-      <meshStandardMaterial color="hsl(var(--primary))" wireframe />
+      <meshStandardMaterial color="hsl(var(--primary))" />
     </mesh>
   );
 }
@@ -27,7 +27,7 @@ function Terrain() {
 export default function MyFarmPage() {
   return (
     <div className="relative mx-auto flex size-full min-h-screen max-w-sm flex-col bg-background font-body text-foreground">
-      <header className="absolute top-0 z-10 flex w-full items-center justify-between p-4">
+      <header className="absolute top-0 z-10 flex w-full items-center justify-between p-4 bg-background/50 backdrop-blur-sm">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/dashboard">
             <ArrowLeftIcon className="h-6 w-6" />
