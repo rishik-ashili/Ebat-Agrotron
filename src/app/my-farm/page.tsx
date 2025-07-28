@@ -103,13 +103,10 @@ export default function MyFarmPage() {
             href="#"
             className="flex flex-1 flex-col items-center justify-end gap-1 text-muted-foreground"
           >
-            <div className="flex h-8 items-center justify-end gap-1 text-muted-foreground"
-            >
-              <div className="flex h-8 items-center justify-center">
-                <UserIcon className="h-6 w-6" />
-              </div>
-              <p className="text-xs font-medium">Profile</p>
+            <div className="flex h-8 items-center justify-center">
+              <UserIcon className="h-6 w-6" />
             </div>
+            <p className="text-xs font-medium">Profile</p>
           </Link>
         </div>
         <div className="h-5 bg-background"></div>
