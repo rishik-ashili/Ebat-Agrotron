@@ -425,7 +425,7 @@ export default function Dashboard() {
             <p className="text-xs font-medium">Dashboard</p>
           </Link>
           <Link
-            href="#"
+            href="/my-farm"
             className="flex flex-1 flex-col items-center justify-end gap-1 text-muted-foreground"
           >
             <div className="flex h-8 items-center justify-center">
@@ -466,5 +466,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
