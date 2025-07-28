@@ -231,7 +231,7 @@ export default function Dashboard() {
                        What would you like to do with this task?
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <AlertDialogFooter className="grid grid-cols-1 sm:flex-col sm:space-y-2">
                      <AlertDialogAction
                       onClick={() => handleUpdateTask(selectedTask!.id, !selectedTask!.is_done)}
                       className="flex items-center gap-2"
@@ -247,7 +247,7 @@ export default function Dashboard() {
                        <Trash2 className="h-4 w-4" />
                       <span>Delete Task</span>
                     </AlertDialogAction>
-                     <AlertDialogCancel className="col-span-full">Cancel</AlertDialogCancel>
+                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
