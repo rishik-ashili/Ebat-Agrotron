@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'AgriTrack Mobile',
+  title: 'EBAT',
   description: 'Monitor your crops, assess damage, and access research.',
 };
 

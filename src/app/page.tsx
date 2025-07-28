@@ -103,7 +103,7 @@ export default function AgriTrackLogin() {
         <header className="flex items-center bg-white p-4 pb-2">
           <div className="w-12"></div>
           <h2 className="flex-1 text-center text-lg font-bold tracking-tight text-foreground">
-            AgriTrack
+            EBAT
           </h2>
           <div className="flex w-12 items-center justify-end">
             <Button variant="ghost" size="icon" className="h-12 w-12">
@@ -114,7 +114,7 @@ export default function AgriTrackLogin() {
 
         <main className="px-4">
           <h1 className="pt-5 pb-3 text-center text-[22px] font-bold tracking-tight text-foreground">
-            Welcome to AgriTrack
+            Welcome to Agrotron
           </h1>
           <p className="pb-3 pt-1 text-center text-base font-normal leading-normal text-foreground">
             Monitor your crops, assess damage, and access research.
