@@ -12,6 +12,7 @@ import {
   Phone,
   Ruler,
   Shield,
+  ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -26,9 +27,17 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
+  const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
+  const [language, setLanguage] = useState('en');
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isLanguageDialogOpen, setIsLanguageDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -38,7 +47,24 @@ export default function ProfilePage() {
       setUser(user);
     };
     fetchUser();
+    
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true);
+      document.documentElement.classList.add('dark');
+    }
   }, []);
+
+  const handleThemeChange = (checked: boolean) => {
+    setIsDarkMode(checked);
+    if (checked) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   const getInitials = (name: string) => {
     const names = name.split(' ');
@@ -52,12 +78,16 @@ export default function ProfilePage() {
     icon,
     title,
     subtitle,
+    children,
+    onClick,
   }: {
     icon: React.ReactNode;
     title: string;
     subtitle?: string;
+    children?: React.ReactNode;
+    onClick?: () => void;
   }) => (
-    <div className="flex min-h-14 items-center gap-4 bg-white px-4 py-2">
+    <div className="flex min-h-14 items-center gap-4 bg-card px-4 py-2" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-foreground">
         {icon}
       </div>
@@ -71,6 +101,7 @@ export default function ProfilePage() {
           </p>
         )}
       </div>
+      {children}
     </div>
   );
 
@@ -93,7 +124,7 @@ export default function ProfilePage() {
           <h2 className="px-4 pb-3 pt-5 text-[22px] font-bold tracking-tight text-foreground">
             Personal Information
           </h2>
-          <div className="flex items-center gap-4 bg-white px-4 py-2 min-h-[72px]">
+          <div className="flex items-center gap-4 bg-card px-4 py-2 min-h-[72px]">
             {user?.user_metadata?.avatar_url ? (
               <Image
                 src={user.user_metadata.avatar_url}
@@ -139,16 +170,52 @@ export default function ProfilePage() {
           <h2 className="px-4 pb-3 pt-5 text-[22px] font-bold tracking-tight text-foreground">
             App Settings
           </h2>
-          <ListItem icon={<Bell className="h-6 w-6" />} title="Notifications" />
-          <ListItem icon={<Globe className="h-6 w-6" />} title="Language" />
-          <ListItem icon={<Moon className="h-6 w-6" />} title="Theme" />
+           <ListItem icon={<Bell className="h-6 w-6" />} title="Notifications">
+            <Switch
+              checked={isNotificationsEnabled}
+              onCheckedChange={setIsNotificationsEnabled}
+            />
+          </ListItem>
+
+          <Dialog open={isLanguageDialogOpen} onOpenChange={setIsLanguageDialogOpen}>
+            <DialogTrigger asChild>
+                <ListItem icon={<Globe className="h-6 w-6" />} title="Language" onClick={() => setIsLanguageDialogOpen(true)}>
+                    <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">{language === 'en' ? 'English' : 'Hindi'}</span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                </ListItem>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Select Language</DialogTitle>
+                </DialogHeader>
+                 <RadioGroup value={language} onValueChange={(value) => {
+                    setLanguage(value);
+                    setIsLanguageDialogOpen(false);
+                }} className="py-4">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="en" id="en" />
+                        <Label htmlFor="en" className="flex-1">English</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="hi" id="hi" />
+                        <Label htmlFor="hi" className="flex-1">Hindi</Label>
+                    </div>
+                </RadioGroup>
+            </DialogContent>
+          </Dialog>
+
+          <ListItem icon={<Moon className="h-6 w-6" />} title="Theme">
+             <Switch checked={isDarkMode} onCheckedChange={handleThemeChange} />
+          </ListItem>
           
           <h2 className="px-4 pb-3 pt-5 text-[22px] font-bold tracking-tight text-foreground">
             Help & Support
           </h2>
-          <ListItem icon={<HelpCircle className="h-6 w-6" />} title="Contact Support" />
-          <ListItem icon={<FileText className="h-6 w-6" />} title="Terms of Service" />
-          <ListItem icon={<Shield className="h-6 w-6" />} title="Privacy Policy" />
+          <ListItem icon={<HelpCircle className="h-6 w-6" />} title="Contact Support" onClick={() => {}} />
+          <ListItem icon={<FileText className="h-6 w-6" />} title="Terms of Service" onClick={() => {}}/>
+          <ListItem icon={<Shield className="h-6 w-6" />} title="Privacy Policy" onClick={() => {}}/>
 
         </main>
       </div>
