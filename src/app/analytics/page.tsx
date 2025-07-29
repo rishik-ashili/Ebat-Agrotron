@@ -69,8 +69,22 @@ const metricDetails: Record<
   canopy_cover: { label: 'Canopy Cover', icon: Trees, unit: '%' },
 };
 
+const defaultAnalyticsData: Omit<AnalyticsData, 'id'>[] = [
+    { field_name: 'Field A', crop_type: 'Corn', season: '2024 Spring', soil_temp: 22.5, soil_moisture: 60, growth_stage: 'Vegetative', sunlight: 8.2, canopy_cover: 30, recorded_at: '2024-05-01' },
+    { field_name: 'Field A', crop_type: 'Corn', season: '2024 Spring', soil_temp: 23.1, soil_moisture: 62, growth_stage: 'Vegetative', sunlight: 8.5, canopy_cover: 35, recorded_at: '2024-05-02' },
+    { field_name: 'Field A', crop_type: 'Corn', season: '2024 Spring', soil_temp: 21.8, soil_moisture: 58, growth_stage: 'Tasseling', sunlight: 7.9, canopy_cover: 40, recorded_at: '2024-05-03' },
+    { field_name: 'Field A', crop_type: 'Corn', season: '2024 Spring', soil_temp: 22.2, soil_moisture: 61, growth_stage: 'Tasseling', sunlight: 8.1, canopy_cover: 42, recorded_at: '2024-05-04' },
+    { field_name: 'Field A', crop_type: 'Corn', season: '2024 Spring', soil_temp: 23.5, soil_moisture: 63, growth_stage: 'Silking', sunlight: 8.8, canopy_cover: 48, recorded_at: '2024-05-05' },
+    { field_name: 'Field B', crop_type: 'Soybean', season: '2024 Spring', soil_temp: 24.0, soil_moisture: 65, growth_stage: 'Flowering', sunlight: 9.0, canopy_cover: 50, recorded_at: '2024-05-01' },
+    { field_name: 'Field B', crop_type: 'Soybean', season: '2024 Spring', soil_temp: 24.5, soil_moisture: 68, growth_stage: 'Flowering', sunlight: 9.2, canopy_cover: 55, recorded_at: '2024-05-02' },
+    { field_name: 'Field B', crop_type: 'Soybean', season: '2024 Spring', soil_temp: 23.5, soil_moisture: 63, growth_stage: 'Pod-setting', sunlight: 8.8, canopy_cover: 60, recorded_at: '2024-05-03' },
+    { field_name: 'Field B', crop_type: 'Soybean', season: '2024 Spring', soil_temp: 24.8, soil_moisture: 66, growth_stage: 'Pod-setting', sunlight: 9.1, canopy_cover: 62, recorded_at: '2024-05-04' },
+    { field_name: 'Field B', crop_type: 'Soybean', season: '2024 Spring', soil_temp: 25.0, soil_moisture: 70, growth_stage: 'Maturing', sunlight: 9.5, canopy_cover: 68, recorded_at: '2024-05-05' },
+];
+
+
 export default function AnalyticsPage() {
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedField, setSelectedField] = useState('All');
   const [selectedCrop, setSelectedCrop] = useState('All');
@@ -90,21 +104,10 @@ export default function AnalyticsPage() {
       return;
     }
 
-    let query = supabase.from('analytics').select('*').eq('user_id', user.id);
-
-    if (selectedField !== 'All') {
-      query = query.eq('field_name', selectedField);
-    }
-    if (selectedCrop !== 'All') {
-      query = query.eq('crop_type', selectedCrop);
-    }
-    if (selectedSeason !== 'All') {
-      query = query.eq('season', selectedSeason);
-    }
-
-    const { data, error } = await query.order('recorded_at', {
-      ascending: true,
-    });
+    const { data, error } = await supabase
+      .from('analytics')
+      .select('*')
+      .eq('user_id', user.id);
 
     if (error) {
       toast({
@@ -114,35 +117,46 @@ export default function AnalyticsPage() {
       });
       setAnalyticsData([]);
     } else if (data.length === 0) {
+      // No real data, use placeholder data
       toast({
-        title: 'No data found',
-        description: 'Try adjusting your filters.',
+        title: 'Displaying Sample Data',
+        description: 'No personal analytics found.',
       });
-      setAnalyticsData([]);
+      const placeholderData = defaultAnalyticsData.map((d, i) => ({ ...d, id: -(i + 1) }));
+      setAnalyticsData(placeholderData);
     } else {
       setAnalyticsData(data);
     }
     setLoading(false);
-  }, [selectedField, selectedCrop, selectedSeason, toast]);
+  }, [toast]);
 
   useEffect(() => {
     fetchAnalyticsData();
   }, [fetchAnalyticsData]);
 
+  const filteredData = useMemo(() => {
+     return analyticsData.filter(d => 
+        (selectedField === 'All' || d.field_name === selectedField) &&
+        (selectedCrop === 'All' || d.crop_type === selectedCrop) &&
+        (selectedSeason === 'All' || d.season === selectedSeason)
+      );
+  }, [analyticsData, selectedField, selectedCrop, selectedSeason]);
+
+
   const { fields, crops, seasons, latestData } = useMemo(() => {
     const fields = ['All', ...new Set(analyticsData.map((d) => d.field_name))];
     const crops = ['All', ...new Set(analyticsData.map((d) => d.crop_type))];
     const seasons = ['All', ...new Set(analyticsData.map((d) => d.season))];
-    const latestData = analyticsData[analyticsData.length - 1] ?? null;
+    const latestData = filteredData[filteredData.length - 1] ?? null;
     return { fields, crops, seasons, latestData };
-  }, [analyticsData]);
+  }, [analyticsData, filteredData]);
 
   const chartData = useMemo(() => {
-    return analyticsData.map((d) => ({
+    return filteredData.map((d) => ({
       date: format(new Date(d.recorded_at), 'MMM d'),
       value: d[activeMetric],
     }));
-  }, [analyticsData, activeMetric]);
+  }, [filteredData, activeMetric]);
 
   const MetricCard = ({ metric }: { metric: Metric }) => {
     const { label, icon: Icon, unit } = metricDetails[metric];
@@ -290,7 +304,7 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             ) : (
                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                <p>No chart data available.</p>
+                <p>No data for selected filters.</p>
               </div>
             )}
           </div>
@@ -350,4 +364,3 @@ export default function AnalyticsPage() {
     </div>
   );
 }
-
