@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import {
   CameraIcon,
   HouseIcon,
-  ListBulletsIcon,
   MapTrifoldIcon,
   PlantIcon,
   PresentationChartIcon,
@@ -245,7 +244,7 @@ export default function Dashboard() {
           <AlertDialog>
              <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-12 w-12 text-foreground">
-                    <ListBulletsIcon className="h-6 w-6" />
+                    <UserIcon className="h-6 w-6" />
                 </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -452,7 +451,7 @@ export default function Dashboard() {
             <p className="text-xs font-medium">Reports</p>
           </Link>
           <Link
-            href="#"
+            href="/profile"
             className="flex flex-1 flex-col items-center justify-end gap-1 text-muted-foreground"
           >
             <div className="flex h-8 items-center justify-center">

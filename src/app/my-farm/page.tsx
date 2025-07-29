@@ -73,7 +73,7 @@ export default function MyFarmPage() {
             <p className="text-xs font-medium">Reports</p>
           </Link>
           <Link
-            href="#"
+            href="/profile"
             className="flex flex-1 flex-col items-center justify-end gap-1 text-muted-foreground"
           >
             <div className="flex h-8 items-center justify-center">
