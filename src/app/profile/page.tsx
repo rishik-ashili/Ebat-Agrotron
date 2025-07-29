@@ -310,13 +310,13 @@ export default function ProfilePage() {
             <p className="text-xs font-medium">Scan</p>
           </Link>
           <Link
-            href="#"
+            href="/analytics"
             className="flex flex-1 flex-col items-center justify-end gap-1 text-muted-foreground"
           >
             <div className="flex h-8 items-center justify-center">
               <PresentationChartIcon className="h-6 w-6" />
             </div>
-            <p className="text-xs font-medium">Reports</p>
+            <p className="text-xs font-medium">Analytics</p>
           </Link>
           <Link
             href="/profile"
@@ -333,4 +333,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
