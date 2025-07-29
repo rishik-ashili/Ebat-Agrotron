@@ -3,7 +3,6 @@
 
 import {
   ArrowLeft,
-  ArrowRight,
   ChevronDown,
   Droplets,
   Sprout,
@@ -21,8 +20,160 @@ import {
 } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+
+type AnalyticsData = {
+  id: number;
+  field_name: string;
+  crop_type: string;
+  season: string;
+  soil_temp: number;
+  soil_moisture: number;
+  growth_stage: string;
+  sunlight: number;
+  canopy_cover: number;
+  recorded_at: string;
+};
+
+type Metric = 'soil_temp' | 'soil_moisture' | 'sunlight' | 'canopy_cover';
+
+const metricDetails: Record<
+  Metric,
+  { label: string; icon: React.ElementType; unit: string }
+> = {
+  soil_temp: { label: 'Soil Temp', icon: Thermometer, unit: '°C' },
+  soil_moisture: { label: 'Soil Moisture', icon: Droplets, unit: '%' },
+  sunlight: { label: 'Sunlight', icon: Sun, unit: 'hr' },
+  canopy_cover: { label: 'Canopy Cover', icon: Trees, unit: '%' },
+};
 
 export default function AnalyticsPage() {
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedField, setSelectedField] = useState('All');
+  const [selectedCrop, setSelectedCrop] = useState('All');
+  const [selectedSeason, setSelectedSeason] = useState('2024 Spring');
+  const [activeMetric, setActiveMetric] = useState<Metric>('soil_temp');
+
+  const { toast } = useToast();
+
+  const fetchAnalyticsData = useCallback(async () => {
+    setLoading(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Not authenticated' });
+      setLoading(false);
+      return;
+    }
+
+    let query = supabase.from('analytics').select('*').eq('user_id', user.id);
+
+    if (selectedField !== 'All') {
+      query = query.eq('field_name', selectedField);
+    }
+    if (selectedCrop !== 'All') {
+      query = query.eq('crop_type', selectedCrop);
+    }
+    if (selectedSeason !== 'All') {
+      query = query.eq('season', selectedSeason);
+    }
+
+    const { data, error } = await query.order('recorded_at', {
+      ascending: true,
+    });
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error fetching analytics',
+        description: error.message,
+      });
+      setAnalyticsData([]);
+    } else if (data.length === 0) {
+      toast({
+        title: 'No data found',
+        description: 'Try adjusting your filters.',
+      });
+      setAnalyticsData([]);
+    } else {
+      setAnalyticsData(data);
+    }
+    setLoading(false);
+  }, [selectedField, selectedCrop, selectedSeason, toast]);
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [fetchAnalyticsData]);
+
+  const { fields, crops, seasons, latestData } = useMemo(() => {
+    const fields = ['All', ...new Set(analyticsData.map((d) => d.field_name))];
+    const crops = ['All', ...new Set(analyticsData.map((d) => d.crop_type))];
+    const seasons = ['All', ...new Set(analyticsData.map((d) => d.season))];
+    const latestData = analyticsData[analyticsData.length - 1] ?? null;
+    return { fields, crops, seasons, latestData };
+  }, [analyticsData]);
+
+  const chartData = useMemo(() => {
+    return analyticsData.map((d) => ({
+      date: format(new Date(d.recorded_at), 'MMM d'),
+      value: d[activeMetric],
+    }));
+  }, [analyticsData, activeMetric]);
+
+  const MetricCard = ({ metric }: { metric: Metric }) => {
+    const { label, icon: Icon, unit } = metricDetails[metric];
+    const value = latestData ? latestData[metric] : null;
+    const isActive = activeMetric === metric;
+
+    return (
+      <button
+        onClick={() => setActiveMetric(metric)}
+        className={cn(
+          'flex flex-1 items-center gap-3 rounded-lg border bg-card p-4 transition-all',
+          isActive && 'ring-2 ring-primary bg-secondary'
+        )}
+      >
+        <Icon className="h-6 w-6 text-foreground" />
+        <div className="text-left">
+          <h2 className="text-base font-bold leading-tight text-foreground">
+            {label}
+          </h2>
+          {loading ? (
+            <Skeleton className="h-5 w-12 mt-1" />
+          ) : (
+            <p className="text-sm font-normal text-muted-foreground">
+              {value !== null ? `${value} ${unit}` : 'N/A'}
+            </p>
+          )}
+        </div>
+      </button>
+    );
+  };
+
   return (
     <div className="relative mx-auto flex size-full min-h-screen max-w-sm flex-col justify-between bg-background font-body text-foreground">
       <div>
@@ -43,80 +194,105 @@ export default function AnalyticsPage() {
             Farm Analytics
           </h2>
           <div className="flex gap-3 overflow-x-auto px-4 pb-3">
-            <Button variant="secondary" className="rounded-xl pl-4 pr-2">
-              All Fields <ChevronDown className="h-5 w-5" />
-            </Button>
-            <Button variant="secondary" className="rounded-xl pl-4 pr-2">
-              All Crops <ChevronDown className="h-5 w-5" />
-            </Button>
-            <Button variant="secondary" className="rounded-xl pl-4 pr-2">
-              This Season <ChevronDown className="h-5 w-5" />
-            </Button>
+            <Select value={selectedField} onValueChange={setSelectedField}>
+              <SelectTrigger className="rounded-xl pl-4 pr-2 w-auto gap-1">
+                <SelectValue placeholder="Select Field" />
+              </SelectTrigger>
+              <SelectContent>
+                {fields.map((f) => (
+                  <SelectItem key={f} value={f}>
+                    {f}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedCrop} onValueChange={setSelectedCrop}>
+              <SelectTrigger className="rounded-xl pl-4 pr-2 w-auto gap-1">
+                <SelectValue placeholder="Select Crop" />
+              </SelectTrigger>
+              <SelectContent>
+                {crops.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedSeason} onValueChange={setSelectedSeason}>
+              <SelectTrigger className="rounded-xl pl-4 pr-2 w-auto gap-1">
+                <SelectValue placeholder="Select Season" />
+              </SelectTrigger>
+              <SelectContent>
+                {seasons.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="p-4">
-            <div className="flex items-stretch justify-between gap-4 rounded-xl">
-              <div className="flex flex-[2_2_0px] flex-col justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <p className="text-base font-bold leading-tight text-foreground">
-                    Current Conditions
-                  </p>
-                  <p className="text-sm font-normal leading-normal text-muted-foreground">
-                    Live status of your farm
-                  </p>
-                </div>
-                <Button
-                  variant="secondary"
-                  className="h-8 w-fit justify-center rounded-xl px-2 pr-2 text-sm"
-                >
-                  <span>View Details</span>
-                  <ArrowRight className="h-[18px] w-[18px]" />
-                </Button>
-              </div>
-              <div className="relative flex-1">
-                <Image
-                  src="https://placehold.co/400x300.png"
-                  alt="Current farm conditions"
-                  data-ai-hint="farm aerial"
-                  width={400}
-                  height={300}
-                  className="aspect-video w-full rounded-xl bg-cover bg-center object-cover"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(158px,1fr))] gap-3 p-4">
-            <div className="flex flex-1 items-center gap-3 rounded-lg border bg-card p-4">
-              <Thermometer className="h-6 w-6 text-foreground" />
-              <h2 className="text-base font-bold leading-tight text-foreground">
-                Soil Temp
-              </h2>
-            </div>
-            <div className="flex flex-1 items-center gap-3 rounded-lg border bg-card p-4">
-              <Droplets className="h-6 w-6 text-foreground" />
-              <h2 className="text-base font-bold leading-tight text-foreground">
-                Soil Moisture
-              </h2>
-            </div>
+          <div className="grid grid-cols-2 gap-3 p-4">
+            <MetricCard metric="soil_temp" />
+            <MetricCard metric="soil_moisture" />
             <div className="flex flex-1 items-center gap-3 rounded-lg border bg-card p-4">
               <Sprout className="h-6 w-6 text-foreground" />
-              <h2 className="text-base font-bold leading-tight text-foreground">
-                Growth Stage
-              </h2>
+              <div className="text-left">
+                <h2 className="text-base font-bold leading-tight text-foreground">
+                  Growth Stage
+                </h2>
+                {loading ? (
+                  <Skeleton className="h-5 w-20 mt-1" />
+                ) : (
+                   <p className="text-sm font-normal text-muted-foreground">
+                    {latestData?.growth_stage || 'N/A'}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="flex flex-1 items-center gap-3 rounded-lg border bg-card p-4">
-              <Sun className="h-6 w-6 text-foreground" />
-              <h2 className="text-base font-bold leading-tight text-foreground">
-                Sunlight
-              </h2>
-            </div>
-            <div className="flex flex-1 items-center gap-3 rounded-lg border bg-card p-4">
-              <Trees className="h-6 w-6 text-foreground" />
-              <h2 className="text-base font-bold leading-tight text-foreground">
-                Canopy Cover
-              </h2>
-            </div>
+            <MetricCard metric="sunlight" />
+            <MetricCard metric="canopy_cover" />
+          </div>
+
+          <div className="h-64 w-full px-4 pt-4">
+            {loading ? (
+              <Skeleton className="h-full w-full" />
+            ) : chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}${metricDetails[activeMetric].unit}`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: 'var(--radius)',
+                    }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    name={metricDetails[activeMetric].label}
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: 'hsl(var(--primary))' }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+               <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                <p>No chart data available.</p>
+              </div>
+            )}
           </div>
         </main>
       </div>
@@ -174,3 +350,4 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
