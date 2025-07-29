@@ -118,7 +118,8 @@ create table
     constraint analytics_user_id_fkey foreign key (user_id) references auth.users (id) on update cascade on delete cascade
   ) tablespace pg_default;
 
--- To insert sample data:
+-- To insert sample data, first find your user ID in the 'auth.users' table.
+-- Then, replace 'YOUR_USER_ID' in the query below with your actual user ID.
 insert into public.analytics (user_id, field_name, crop_type, season, soil_temp, soil_moisture, growth_stage, sunlight, canopy_cover, recorded_at)
 values
 ('YOUR_USER_ID', 'Field A', 'Corn', '2024 Spring', 22.5, 60, 'Vegetative', 8.2, 30, '2024-05-01'),
@@ -131,5 +132,3 @@ values
 
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    
