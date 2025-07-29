@@ -4,7 +4,7 @@
 import {
   ArrowLeft,
   ArrowRight,
-  CaretDown,
+  ChevronDown,
   Droplets,
   Sprout,
   Sun,
@@ -44,13 +44,13 @@ export default function AnalyticsPage() {
           </h2>
           <div className="flex gap-3 overflow-x-auto px-4 pb-3">
             <Button variant="secondary" className="rounded-xl pl-4 pr-2">
-              All Fields <CaretDown className="h-5 w-5" />
+              All Fields <ChevronDown className="h-5 w-5" />
             </Button>
             <Button variant="secondary" className="rounded-xl pl-4 pr-2">
-              All Crops <CaretDown className="h-5 w-5" />
+              All Crops <ChevronDown className="h-5 w-5" />
             </Button>
             <Button variant="secondary" className="rounded-xl pl-4 pr-2">
-              This Season <CaretDown className="h-5 w-5" />
+              This Season <ChevronDown className="h-5 w-5" />
             </Button>
           </div>
 
