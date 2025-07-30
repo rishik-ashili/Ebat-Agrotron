@@ -22,12 +22,12 @@ const AnalyticsDataItemSchema = z.object({
   recorded_at: z.string(),
 });
 
-export const AnalyzeFarmDataInputSchema = z.object({
+const AnalyzeFarmDataInputSchema = z.object({
   analyticsData: z.array(AnalyticsDataItemSchema),
 });
 export type AnalyzeFarmDataInput = z.infer<typeof AnalyzeFarmDataInputSchema>;
 
-export const AnalyzeFarmDataOutputSchema = z.object({
+const AnalyzeFarmDataOutputSchema = z.object({
   insights: z.array(
     z.object({
       problem: z.string().describe('The potential problem identified from the data.'),
