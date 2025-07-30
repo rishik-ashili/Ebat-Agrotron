@@ -9,6 +9,7 @@ import {
   Sun,
   Thermometer,
   Trees,
+  Bot,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -43,6 +44,19 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import {
+  analyzeFarmData,
+  type AnalyzeFarmDataOutput,
+} from '@/ai/flows/analyze-farm-data-flow';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 
 type AnalyticsData = {
   id: number;
@@ -90,6 +104,10 @@ export default function AnalyticsPage() {
   const [selectedCrop, setSelectedCrop] = useState('All');
   const [selectedSeason, setSelectedSeason] = useState('2024 Spring');
   const [activeMetric, setActiveMetric] = useState<Metric>('soil_temp');
+  const [isAiInsightsLoading, setIsAiInsightsLoading] = useState(false);
+  const [aiInsights, setAiInsights] = useState<AnalyzeFarmDataOutput | null>(null);
+  const [isInsightsDialogOpen, setIsInsightsDialogOpen] = useState(false);
+
 
   const { toast } = useToast();
 
@@ -158,6 +176,34 @@ export default function AnalyticsPage() {
     }));
   }, [filteredData, activeMetric]);
 
+  const handleGetAiInsights = async () => {
+    if (!filteredData || filteredData.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No data to analyze',
+        description: 'Please select filters that contain data.',
+      });
+      return;
+    }
+    setIsAiInsightsLoading(true);
+    setIsInsightsDialogOpen(true);
+    try {
+      const insights = await analyzeFarmData({ analyticsData: filteredData });
+      setAiInsights(insights);
+    } catch (error) {
+      console.error('Error fetching AI insights:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error getting AI insights',
+        description: (error as Error).message,
+      });
+       setIsInsightsDialogOpen(false);
+    } finally {
+      setIsAiInsightsLoading(false);
+    }
+  };
+
+
   const MetricCard = ({ metric }: { metric: Metric }) => {
     const { label, icon: Icon, unit } = metricDetails[metric];
     const value = latestData ? latestData[metric] : null;
@@ -204,9 +250,21 @@ export default function AnalyticsPage() {
         </header>
 
         <main className="flex-1">
-          <h2 className="px-4 pb-3 pt-5 text-[22px] font-bold tracking-tight text-foreground">
-            Farm Analytics
-          </h2>
+          <div className="px-4 pb-3 pt-5 flex justify-between items-center">
+            <h2 className="text-[22px] font-bold tracking-tight text-foreground">
+              Farm Analytics
+            </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGetAiInsights}
+              disabled={isAiInsightsLoading}
+            >
+              <Bot className="mr-2 h-4 w-4" />
+              {isAiInsightsLoading ? 'Analyzing...' : 'Get AI Insights'}
+            </Button>
+          </div>
+          
           <div className="flex gap-3 overflow-x-auto px-4 pb-3">
             <Select value={selectedField} onValueChange={setSelectedField}>
               <SelectTrigger className="rounded-xl pl-4 pr-2 w-auto gap-1">
@@ -310,6 +368,44 @@ export default function AnalyticsPage() {
           </div>
         </main>
       </div>
+
+       <AlertDialog open={isInsightsDialogOpen} onOpenChange={setIsInsightsDialogOpen}>
+        <AlertDialogContent className="max-h-[80vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle>AI-Powered Insights</AlertDialogTitle>
+            <AlertDialogDescription>
+              Here's an analysis of your farm's data from our AI agronomist.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {isAiInsightsLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-1/2" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-8 w-1/3" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : aiInsights ? (
+            <div className="text-sm">
+              <h3 className="font-bold mb-2">Summary</h3>
+              <p className="mb-4 text-muted-foreground">{aiInsights.summary}</p>
+              {aiInsights.insights.map((insight, index) => (
+                <div key={index} className="mb-4">
+                  <h4 className="font-semibold text-destructive">Problem: {insight.problem}</h4>
+                  <p className="text-primary">Recommendation: <span className="text-muted-foreground">{insight.recommendation}</span></p>
+                </div>
+              ))}
+            </div>
+          ) : (
+             <div className="text-center text-muted-foreground py-8">
+                <p>No insights generated.</p>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAiInsights(null)}>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       <footer className="sticky bottom-0 mt-8 bg-background">
         <div className="flex gap-2 border-t border-border px-4 pb-3 pt-2">
